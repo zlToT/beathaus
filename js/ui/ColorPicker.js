@@ -40,14 +40,14 @@ export class ColorPicker {
       sw.addEventListener('click', () => this.apply(sw.dataset.color));
     });
 
-    // 折叠
-    let collapsed = false;
+    // 折叠（默认收起，需要时点击 [+] 展开）
+    let collapsed = true;
     this.toggle.addEventListener('click', () => {
       collapsed = !collapsed;
       this.body.style.display = collapsed ? 'none' : 'block';
       this.toggle.textContent = collapsed ? '[+]' : '[—]';
     });
-
+    
     this.apply(state.vj.primaryColor);
   }
 

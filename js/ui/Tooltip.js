@@ -5,6 +5,10 @@
 // ============================================================
 
 export function initTooltip() {
+  // 触屏设备（无 hover 能力）不启用：触屏没有悬浮语义，点击触发的合成 mouseover
+  // 会让提示错位、停留，反而干扰；鼠标设备（含 PC 窄窗口）保持正常
+  if (window.matchMedia && window.matchMedia('(hover: none)').matches) return;
+
   const tip = document.createElement('div');
   tip.id = 'global-tooltip';
   document.body.appendChild(tip);

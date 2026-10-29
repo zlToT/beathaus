@@ -36,6 +36,19 @@ body {
   border-bottom: none;
 }
 
+/* 面板高度封顶 + 内部纵向滚动：中小屏单列堆叠时不会超出视口，宽屏三列不受影响 */
+#dj-panel {
+  max-height: 74vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* 窄屏适当降低封顶，给舞台多留视野 */
+@media (max-width: 767px) {
+  #dj-panel {
+    max-height: 62vh;
+  }
+}
+
 /* 收起面板时，顶部栏（当前曲目/实时信息）与右侧颜色拾取器一起淡出隐藏 */
 .hud-overlay {
   transition: opacity 0.3s ease;
@@ -184,6 +197,9 @@ body {
 .turntable {
   border-radius: 50%;
   touch-action: none;
+  /* 窄容器里等比缩小，不撑破列宽（canvas 内部坐标不变，仅视觉缩放） */
+  max-width: 100%;
+  height: auto;
 }
 .turntable:active { cursor: grabbing; }
 

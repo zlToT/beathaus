@@ -88,9 +88,9 @@
     data-tip="主色调：改变舞台灯光、大屏、粒子、观众荧光棒和界面的主色">
     <div class="flex items-center justify-between mb-2">
       <span class="text-xs font-bold text-slate-300">主色调拾取</span>
-      <button id="color-picker-toggle" class="text-slate-400 hover:text-white text-xs leading-none">[—]</button>
+      <button id="color-picker-toggle" class="text-slate-400 hover:text-white text-xs leading-none">[+]</button>
     </div>
-    <div id="color-picker-body">
+    <div id="color-picker-body" style="display:none">
       <input type="color" id="color-input" value="#9b5cff"
         class="h-24 w-full cursor-pointer rounded-lg border border-white/10 bg-transparent p-0" />
       <div class="mt-2">
@@ -125,8 +125,8 @@
       class="mb-0.5 h-5 w-16 rounded-t-lg neon-panel flex items-center justify-center text-[11px] text-slate-300 hover:text-white">
       <span id="panel-toggle-icon">▼</span>
     </button>
-    <div id="dj-panel" class="neon-panel rounded-2xl w-full max-w-[1500px] p-3 overflow-x-auto">
-      <div class="grid gap-3 min-w-[1060px]" style="grid-template-columns: minmax(300px,320px) minmax(460px,1fr) minmax(300px,320px);">
+    <div id="dj-panel" class="neon-panel rounded-2xl w-full max-w-[1500px] p-3">
+      <div class="grid gap-3 grid-cols-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_minmax(280px,320px)]">
 
         <!-- ================= Deck A ================= -->
         <div class="rounded-xl border border-white/10 bg-black/25 p-2.5" data-deck="A">
