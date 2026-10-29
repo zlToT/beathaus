@@ -1,0 +1,321 @@
+/* ============================================================
+   BeatHaus · LiveHouse 演唱会模拟器 — 深色赛博暗紫霓虹样式
+   ============================================================ */
+
+:root {
+  --primary: #9b5cff;
+  --primary-rgb: 155, 92, 255;
+  --magenta: #ff4fd8;
+  --cyan: #35e0ff;
+  --orange: #ff7a2f;
+}
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #0a0612;
+}
+
+/* ---------- 玻璃拟态面板 ---------- */
+.neon-panel {
+  background: rgba(16, 9, 30, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(155, 92, 255, 0.28);
+  box-shadow: 0 0 24px rgba(10, 4, 24, 0.7), inset 0 0 18px rgba(155, 92, 255, 0.06);
+}
+
+/* ---------- 面板收起 / 展开（箭头跟随一起下滑） ---------- */
+#bottom-dock {
+  transition: transform 0.32s ease;
+}
+#bottom-dock.collapsed {
+  /* 面板完全出屏，箭头停在屏幕最底边缘（pb-3 12 + 箭头 20） */
+  transform: translateY(calc(100% - 32px));
+}
+#panel-toggle {
+  border-bottom: none;
+}
+
+/* 收起面板时，顶部栏（当前曲目/实时信息）与右侧颜色拾取器一起淡出隐藏 */
+.hud-overlay {
+  transition: opacity 0.3s ease;
+}
+.panel-collapsed .hud-overlay {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- 发光文字 ---------- */
+.glow-purple   { text-shadow: 0 0 10px rgba(155, 92, 255, 0.9); }
+.glow-magenta  { text-shadow: 0 0 10px rgba(255, 79, 216, 0.9); }
+.glow-cyan     { text-shadow: 0 0 10px rgba(53, 224, 255, 0.9); }
+
+/* ---------- 霓虹滑块 ---------- */
+.neon-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(155,92,255,0.7), rgba(255,79,216,0.5));
+  outline: none;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(155, 92, 255, 0.35);
+}
+.neon-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 10px var(--primary), 0 0 4px #fff;
+  transition: transform 0.1s;
+}
+.neon-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.neon-range::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* ---------- 按钮 ---------- */
+.neon-btn {
+  background: rgba(155, 92, 255, 0.14);
+  border: 1px solid rgba(155, 92, 255, 0.6);
+  color: #e9ddff;
+  transition: all 0.15s;
+}
+.neon-btn:hover {
+  background: rgba(155, 92, 255, 0.3);
+  box-shadow: 0 0 14px rgba(155, 92, 255, 0.6);
+}
+.neon-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 16px var(--primary);
+}
+.neon-btn-mini {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cbd5e1;
+  transition: all 0.15s;
+}
+.neon-btn-mini:hover {
+  background: rgba(155, 92, 255, 0.25);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* MIX 按钮 */
+.mix-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
+  transition: all 0.2s;
+}
+.mix-btn.active {
+  background: linear-gradient(90deg, var(--orange), #ff4f6d);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 122, 47, 0.7);
+}
+
+/* ---------- Deck 徽标 ---------- */
+.deck-badge {
+  background: linear-gradient(135deg, rgba(155,92,255,0.35), rgba(255,79,216,0.3));
+  border: 1px solid rgba(155, 92, 255, 0.6);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(155, 92, 255, 0.35);
+}
+
+/* ---------- 进度条 ---------- */
+.progress-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+.progress-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--magenta));
+  box-shadow: 0 0 8px var(--primary);
+}
+/* Cue 标签层 + 可点击标签（点击删除） */
+.cue-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cue-tag {
+  position: absolute;
+  top: -4px;
+  width: 8px;
+  height: 16px;
+  margin-left: -4px;
+  border-radius: 3px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s, box-shadow 0.15s;
+}
+.cue-tag::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-bottom-color: var(--cyan);
+}
+.cue-tag:hover {
+  background: #ff4f6d;
+  box-shadow: 0 0 12px #ff4f6d;
+  transform: scale(1.25);
+}
+.cue-tag:hover::before { border-bottom-color: #ff4f6d; }
+
+/* ---------- 搓碟转盘 ---------- */
+.turntable {
+  border-radius: 50%;
+  touch-action: none;
+}
+.turntable:active { cursor: grabbing; }
+
+/* ---------- 旋钮 ---------- */
+.knob {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a2a5e, #160c2a 70%);
+  border: 1px solid rgba(155, 92, 255, 0.5);
+  box-shadow: 0 0 10px rgba(155, 92, 255, 0.3), inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  cursor: ns-resize;
+  touch-action: none;
+}
+.knob-indicator {
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 3px;
+  height: 12px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  transform-origin: 50% 16px;
+  transform: rotate(0deg);
+}
+
+/* ---------- 下拉 / 数字输入 ---------- */
+.neon-select {
+  background: rgba(10, 5, 22, 0.9);
+  border: 1px solid rgba(155, 92, 255, 0.4);
+  border-radius: 6px;
+  color: #e2d9f5;
+  padding: 3px 6px;
+  outline: none;
+}
+.neon-select:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(155,92,255,0.4); }
+
+.neon-number {
+  background: rgba(10, 5, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  color: #e2d9f5;
+  padding: 2px 4px;
+  outline: none;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.neon-number::-webkit-outer-spin-button,
+.neon-number::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ---------- 开关 ---------- */
+.neon-toggle { cursor: pointer; color: #cbd5e1; }
+.neon-toggle input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  position: relative;
+  transition: background 0.2s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.neon-toggle input::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: all 0.2s;
+}
+.neon-toggle input:checked {
+  background: rgba(155, 92, 255, 0.55);
+  box-shadow: 0 0 8px rgba(155, 92, 255, 0.5);
+}
+.neon-toggle input:checked::after {
+  left: 16px;
+  background: #fff;
+  box-shadow: 0 0 6px #fff;
+}
+
+/* ---------- 预设色板 ---------- */
+.preset-swatch {
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.preset-swatch:hover { transform: scale(1.15); }
+
+/* ---------- 颜色拾取器原生控件 ---------- */
+#color-input::-webkit-color-swatch-wrapper { padding: 4px; }
+#color-input::-webkit-color-swatch { border: none; border-radius: 6px; }
+#color-input::-moz-color-swatch { border: none; border-radius: 6px; }
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb {
+  background: rgba(155, 92, 255, 0.4);
+  border-radius: 8px;
+}
+
+/* ---------- 全局悬浮提示 Tooltip（JS 挂 body） ---------- */
+#global-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(3px);
+  min-width: 120px;
+  max-width: 280px;
+  background: rgba(10, 5, 22, 0.96);
+  border: 1px solid rgba(155, 92, 255, 0.6);
+  box-shadow: 0 0 14px rgba(155, 92, 255, 0.35);
+  color: #e2d9f5;
+  font-size: 11px;
+  font-weight: normal;
+  line-height: 1.45;
+  padding: 6px 9px;
+  border-radius: 7px;
+  white-space: normal;
+  text-align: center;
+  transition: opacity 0.16s, transform 0.16s;
+}
+#global-tooltip.show {
+  opacity: 1;
+  transform: translateY(0);
+}

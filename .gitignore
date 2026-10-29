@@ -1,0 +1,14 @@
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
+
+# 本地音频（不要把测试曲传上去）
+*.mp3
+*.flac
+*.wav
+*.ogg
+*.m4a

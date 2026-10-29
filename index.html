@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BeatHaus · LiveHouse 演唱会模拟器</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%239b5cff'/%3E%3Ctext x='16' y='21' font-size='11' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EBH%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 运行时编译，Demo 用） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              bg: '#0a0612',
+              panel: 'rgba(18,10,32,0.78)',
+              purple: '#9b5cff',
+              magenta: '#ff4fd8',
+              cyan: '#35e0ff',
+              orange: '#ff7a2f'
+            }
+          },
+          fontFamily: {
+            mono: ['Consolas', 'Monaco', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Three.js（CDN + importmap） -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+
+<body class="overflow-hidden bg-[#0a0612] text-slate-200 select-none">
+
+  <!-- ============ 3D 舞台画布（全屏背景） ============ -->
+  <div id="stage-container" class="fixed inset-0 z-0"></div>
+
+  <!-- ============ 顶部栏（Logo/当前曲目 + 实时信息面板） ============ -->
+  <header class="hud-overlay fixed top-0 left-0 right-0 z-20 flex items-start justify-between px-4 py-3 pointer-events-none">
+    <!-- Logo / 当前曲目 -->
+    <div class="flex items-center gap-2.5 rounded-xl px-3 py-2 neon-panel pointer-events-auto">
+      <div class="h-8 w-8 rounded-full bg-gradient-to-br from-cyber-purple to-cyber-magenta shadow-[0_0_14px_#9b5cff] flex items-center justify-center text-[10px] font-bold">BH</div>
+      <div class="leading-tight">
+        <div class="text-sm font-bold tracking-wide text-white">BeatHaus</div>
+        <div id="now-playing" class="text-[11px] text-slate-400 font-mono max-w-[220px] truncate">未加载曲目</div>
+      </div>
+    </div>
+
+    <!-- 实时信息面板 -->
+    <div class="neon-panel pointer-events-auto rounded-xl px-5 py-2 flex items-center gap-6">
+      <div class="text-center" data-tip="整体能量值：随音乐音量变化，0–100%">
+        <div class="text-[10px] tracking-widest text-slate-400">ENERGY</div>
+        <div id="info-energy" class="text-xl font-bold font-mono text-cyber-magenta glow-magenta">--%</div>
+      </div>
+      <div class="h-8 w-px bg-white/10"></div>
+      <div class="text-center" data-tip="低频能量：鼓点越重数值越高，驱动灯光、粒子和屏幕震动">
+        <div class="text-[10px] tracking-widest text-slate-400">BASS</div>
+        <div id="info-bass" class="text-xl font-bold font-mono text-cyber-purple glow-purple">--%</div>
+      </div>
+      <div class="h-8 w-px bg-white/10"></div>
+      <div class="text-center" data-tip="BPM：每分钟节拍数，导入音频后自动检测">
+        <div class="text-[10px] tracking-widest text-slate-400">BPM</div>
+        <div id="info-bpm" class="text-xl font-bold font-mono text-cyber-cyan glow-cyan">--</div>
+      </div>
+      <div class="h-8 w-px bg-white/10"></div>
+      <div class="text-center min-w-[52px]" data-tip="段落标签：根据音乐能量自动判断（Intro 开场 / Build 蓄力 / Drop 高潮 / Break 间奏 / Groove 律动）">
+        <div class="text-[10px] tracking-widest text-slate-400">SECTION</div>
+        <div id="info-section" class="text-xl font-bold text-white">--</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 右侧颜色拾取器 ============ -->
+  <aside id="color-picker" class="hud-overlay fixed right-4 top-24 z-20 neon-panel rounded-xl p-3 w-52"
+    data-tip="主色调：改变舞台灯光、大屏、粒子、观众荧光棒和界面的主色">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-bold text-slate-300">主色调拾取</span>
+      <button id="color-picker-toggle" class="text-slate-400 hover:text-white text-xs leading-none">[—]</button>
+    </div>
+    <div id="color-picker-body">
+      <input type="color" id="color-input" value="#9b5cff"
+        class="h-24 w-full cursor-pointer rounded-lg border border-white/10 bg-transparent p-0" />
+      <div class="mt-2">
+        <div class="text-[10px] text-slate-400 mb-1">色相</div>
+        <input type="range" id="color-hue" min="0" max="360" value="265" class="neon-range w-full" />
+      </div>
+      <div class="mt-2 grid grid-cols-3 gap-1.5">
+        <label class="text-[10px] text-slate-400">R
+          <input type="number" id="color-r" min="0" max="255" value="155" class="neon-number w-full" />
+        </label>
+        <label class="text-[10px] text-slate-400">G
+          <input type="number" id="color-g" min="0" max="255" value="92" class="neon-number w-full" />
+        </label>
+        <label class="text-[10px] text-slate-400">B
+          <input type="number" id="color-b" min="0" max="255" value="255" class="neon-number w-full" />
+        </label>
+      </div>
+      <div class="mt-2 grid grid-cols-6 gap-1">
+        <button class="preset-swatch" data-color="#9b5cff" style="background:#9b5cff"></button>
+        <button class="preset-swatch" data-color="#ff4fd8" style="background:#ff4fd8"></button>
+        <button class="preset-swatch" data-color="#35e0ff" style="background:#35e0ff"></button>
+        <button class="preset-swatch" data-color="#ff7a2f" style="background:#ff7a2f"></button>
+        <button class="preset-swatch" data-color="#39ff8b" style="background:#39ff8b"></button>
+        <button class="preset-swatch" data-color="#ffe14f" style="background:#ffe14f"></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 下方 DJ 控制面板（可收起） ============ -->
+  <div id="bottom-dock" class="fixed bottom-0 left-0 right-0 z-20 flex flex-col items-center pb-3 px-4">
+    <button id="panel-toggle" data-tip="收起 / 展开控制面板"
+      class="mb-0.5 h-5 w-16 rounded-t-lg neon-panel flex items-center justify-center text-[11px] text-slate-300 hover:text-white">
+      <span id="panel-toggle-icon">▼</span>
+    </button>
+    <div id="dj-panel" class="neon-panel rounded-2xl w-full max-w-[1500px] p-3 overflow-x-auto">
+      <div class="grid gap-3 min-w-[1060px]" style="grid-template-columns: minmax(300px,320px) minmax(460px,1fr) minmax(300px,320px);">
+
+        <!-- ================= Deck A ================= -->
+        <div class="rounded-xl border border-white/10 bg-black/25 p-2.5" data-deck="A">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="deck-badge rounded px-1.5 py-0.5 text-[11px] font-bold">Deck A</span>
+            <span id="deckA-name" class="text-[11px] text-slate-400 font-mono truncate flex-1">未加载</span>
+            <button class="deck-import-btn neon-btn-mini text-[11px] px-2 py-0.5 rounded"
+              data-tip="导入音频到 Deck A（也可以直接把音频文件拖进页面）">导入</button>
+          </div>
+          <!-- 进度条 -->
+          <div class="flex items-center gap-2 mb-2">
+            <span id="deckA-cur" class="text-[10px] font-mono text-slate-400 w-8">00:00</span>
+            <div class="progress-track flex-1" data-progress="A" data-tip="播放进度：点击或拖动可跳转位置">
+              <div id="deckA-progress" class="progress-fill"></div>
+              <div id="deckA-cue-layer" class="cue-layer"></div>
+            </div>
+            <span id="deckA-dur" class="text-[10px] font-mono text-slate-400 w-8 text-right">00:00</span>
+          </div>
+          <!-- 转盘 + 操作 -->
+          <div class="flex items-center gap-3">
+            <canvas id="deckA-turntable" width="118" height="118" class="turntable cursor-grab"
+              data-tip="搓碟转盘：按住拖动可搓碟，手停声停、往回拨可倒放"></canvas>
+            <div class="flex-1 space-y-1.5">
+              <div class="flex gap-1.5">
+                <button id="deckA-play" class="neon-btn flex-1 text-[12px] py-1.5 rounded"
+                  data-tip="播放 / 暂停当前曲目">播放</button>
+                <button id="deckA-cue" class="neon-btn-mini text-[11px] px-3 py-1.5 rounded"
+                  data-tip="在当前位置打 Cue 标记；播放到标记会自动暂停，点进度条上的标记可删除">Cue</button>
+              </div>
+              <div class="rounded-lg bg-black/30 border border-white/10 px-2 py-1 text-center">
+                <div class="text-[9px] text-slate-400 tracking-widest">BPM</div>
+                <div id="deckA-bpm" class="text-lg font-bold font-mono text-cyber-cyan leading-tight">--</div>
+              </div>
+              <div class="flex items-center gap-2" data-tip="Deck A 音量">
+                <span class="text-[10px] text-slate-400 w-8">音量</span>
+                <input type="range" id="deckA-volume" min="0" max="100" value="80" class="neon-range flex-1" />
+              </div>
+            </div>
+          </div>
+          <!-- Filter 旋钮 -->
+          <div class="mt-2 flex items-center gap-3" data-tip="音色滤波：向左拧低通（声音发闷），向右拧高通（声音发薄），中点正常">
+            <div class="knob" data-knob="A" data-value="0.5">
+              <div class="knob-indicator"></div>
+            </div>
+            <span class="text-[10px] text-slate-400">Filter A（左低通 / 右高通）</span>
+          </div>
+        </div>
+
+        <!-- ================= 混音台 / VJ ================= -->
+        <div class="rounded-xl border border-white/10 bg-black/25 p-2.5">
+          <div class="grid grid-cols-2 gap-3">
+            <!-- 左列：混音 -->
+            <div class="space-y-2">
+              <button id="global-import" class="w-full rounded-lg py-2 text-[13px] font-bold text-white bg-gradient-to-r from-cyber-orange to-[#ff4f6d] shadow-[0_0_16px_rgba(255,122,47,0.5)] hover:brightness-110"
+                data-tip="导入音频文件（也可以直接把音频拖进页面，拖到左/右侧可指定 Deck）">
+                导入音频文件
+              </button>
+              <!-- Crossfader -->
+              <div class="rounded-lg bg-black/30 border border-white/10 p-2" data-tip="交叉推子：在 A / B 两首歌之间平滑切换混音">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                  <span>A</span><span>Crossfader 交叉推子</span><span>B</span>
+                </div>
+                <input type="range" id="crossfader" min="0" max="100" value="50" class="neon-range w-full" />
+                <div class="flex gap-1.5 mt-1.5">
+                  <button id="mix-a" class="mix-btn flex-1 text-[11px] py-1 rounded" data-tip="一键把混音切到 Deck A">MIX-A</button>
+                  <button id="mix-b" class="mix-btn flex-1 text-[11px] py-1 rounded" data-tip="一键把混音切到 Deck B">MIX-B</button>
+                </div>
+              </div>
+              <!-- EQ / 总音量 -->
+              <div class="rounded-lg bg-black/30 border border-white/10 p-2 space-y-1.5">
+                <div class="flex items-center gap-2" data-tip="高音（高频）强弱：+ 更亮，− 更暗">
+                  <span class="text-[10px] text-slate-400 w-14">高频 Filter</span>
+                  <input type="range" id="eq-high" min="-12" max="12" value="0" step="0.5" class="neon-range flex-1" />
+                  <span id="eq-high-val" class="text-[10px] font-mono text-slate-400 w-8 text-right">0dB</span>
+                </div>
+                <div class="flex items-center gap-2" data-tip="低音（低频）强弱：+ 更厚重，− 更干净">
+                  <span class="text-[10px] text-slate-400 w-14">低频 Filter</span>
+                  <input type="range" id="eq-low" min="-12" max="12" value="0" step="0.5" class="neon-range flex-1" />
+                  <span id="eq-low-val" class="text-[10px] font-mono text-slate-400 w-8 text-right">0dB</span>
+                </div>
+                <div class="flex items-center gap-2" data-tip="总音量：整体输出大小">
+                  <span class="text-[10px] text-slate-400 w-14">总音量</span>
+                  <input type="range" id="master-volume" min="0" max="100" value="80" class="neon-range flex-1" />
+                  <span id="master-val" class="text-[10px] font-mono text-slate-400 w-8 text-right">80%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右列：VJ 控制 -->
+            <div class="space-y-2">
+              <div class="rounded-lg bg-black/30 border border-white/10 p-2 space-y-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 w-14">VJ 模式</span>
+                  <select id="vj-screen" class="neon-select flex-1 text-[11px]" data-tip="舞台大屏显示的视觉图案">
+                    <option value="spiral">螺旋 Spiral</option>
+                    <option value="wave" selected>波形 Wave</option>
+                    <option value="bars">频谱 Bars</option>
+                    <option value="tunnel">粒子隧道 Tunnel</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 w-14">灯光模式</span>
+                  <select id="vj-light" class="neon-select flex-1 text-[11px]" data-tip="舞台灯光的运动方式">
+                    <option value="pulse">节拍脉冲</option>
+                    <option value="static">静态</option>
+                    <option value="sweep">扫射</option>
+                    <option value="rainbow">彩虹循环</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 w-14">灯光强度</span>
+                  <input type="range" id="vj-intensity" min="0" max="100" value="50" class="neon-range flex-1" data-tip="舞台灯光亮度" />
+                  <span id="vj-intensity-val" class="text-[10px] font-mono text-slate-400 w-8 text-right">50%</span>
+                </div>
+              </div>
+
+              <!-- 镜头 / 震动 -->
+              <div class="rounded-lg bg-black/30 border border-white/10 p-2 space-y-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 w-14">镜头</span>
+                  <select id="camera-mode" class="neon-select flex-1 text-[11px]" data-tip="相机视角：静止 / 轻微环绕 / 节拍推进 / 全景俯视">
+                    <option value="static">静止</option>
+                    <option value="orbit">轻微环绕</option>
+                    <option value="beat">节拍推进</option>
+                    <option value="overview">全景俯视</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 w-14">屏幕震动</span>
+                  <input type="range" id="shake-intensity" min="0" max="100" value="10" class="neon-range flex-1" data-tip="画面震动强度，鼓点（BASS）重时会自动叠加震动" />
+                  <span id="shake-val" class="text-[10px] font-mono text-slate-400 w-8 text-right">10%</span>
+                </div>
+              </div>
+
+              <div class="rounded-lg bg-black/30 border border-white/10 p-2 grid grid-cols-2 gap-1.5">
+                <label class="neon-toggle flex items-center gap-1.5 text-[11px]" data-tip="舞台漂浮的光点粒子">
+                  <input type="checkbox" id="toggle-particles" checked />
+                  <span>粒子效果</span>
+                </label>
+                <label class="neon-toggle flex items-center gap-1.5 text-[11px]" data-tip="复古噪点和扫描线效果">
+                  <input type="checkbox" id="toggle-noise" checked />
+                  <span>干涉噪点</span>
+                </label>
+                <label class="neon-toggle flex items-center gap-1.5 text-[11px] col-span-2" data-tip="显示台下观众和舞台机器人 VJ">
+                  <input type="checkbox" id="toggle-crowd" checked />
+                  <span>台下观众 + 机器人 VJ</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= Deck B ================= -->
+        <div class="rounded-xl border border-white/10 bg-black/25 p-2.5" data-deck="B">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="deck-badge rounded px-1.5 py-0.5 text-[11px] font-bold">Deck B</span>
+            <span id="deckB-name" class="text-[11px] text-slate-400 font-mono truncate flex-1">未加载</span>
+            <button class="deck-import-btn neon-btn-mini text-[11px] px-2 py-0.5 rounded"
+              data-tip="导入音频到 Deck B（也可以直接把音频文件拖进页面）">导入</button>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <span id="deckB-cur" class="text-[10px] font-mono text-slate-400 w-8">00:00</span>
+            <div class="progress-track flex-1" data-progress="B" data-tip="播放进度：点击或拖动可跳转位置">
+              <div id="deckB-progress" class="progress-fill"></div>
+              <div id="deckB-cue-layer" class="cue-layer"></div>
+            </div>
+            <span id="deckB-dur" class="text-[10px] font-mono text-slate-400 w-8 text-right">00:00</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <canvas id="deckB-turntable" width="118" height="118" class="turntable cursor-grab"
+              data-tip="搓碟转盘：按住拖动可搓碟，手停声停、往回拨可倒放"></canvas>
+            <div class="flex-1 space-y-1.5">
+              <div class="flex gap-1.5">
+                <button id="deckB-play" class="neon-btn flex-1 text-[12px] py-1.5 rounded"
+                  data-tip="播放 / 暂停当前曲目">播放</button>
+                <button id="deckB-cue" class="neon-btn-mini text-[11px] px-3 py-1.5 rounded"
+                  data-tip="在当前位置打 Cue 标记；播放到标记会自动暂停，点进度条上的标记可删除">Cue</button>
+              </div>
+              <div class="rounded-lg bg-black/30 border border-white/10 px-2 py-1 text-center">
+                <div class="text-[9px] text-slate-400 tracking-widest">BPM</div>
+                <div id="deckB-bpm" class="text-lg font-bold font-mono text-cyber-cyan leading-tight">--</div>
+              </div>
+              <div class="flex items-center gap-2" data-tip="Deck B 音量">
+                <span class="text-[10px] text-slate-400 w-8">音量</span>
+                <input type="range" id="deckB-volume" min="0" max="100" value="80" class="neon-range flex-1" />
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 flex items-center gap-3" data-tip="音色滤波：向左拧低通（声音发闷），向右拧高通（声音发薄），中点正常">
+            <div class="knob" data-knob="B" data-value="0.5">
+              <div class="knob-indicator"></div>
+            </div>
+            <span class="text-[10px] text-slate-400">Filter B（左低通 / 右高通）</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 拖拽上传遮罩 ============ -->
+  <div id="drop-overlay" class="fixed inset-0 z-40 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-[#0a0612]/80 backdrop-blur-sm"></div>
+    <div class="relative rounded-2xl border-2 border-dashed border-cyber-purple px-16 py-10 text-center shadow-[0_0_40px_rgba(155,92,255,0.5)]">
+      <div class="text-2xl font-bold text-cyber-purple glow-purple">松开以加载音频</div>
+      <div class="text-sm text-slate-400 mt-2">拖到左侧 / 右侧可指定 Deck A / Deck B（支持 mp3 / flac）</div>
+    </div>
+  </div>
+
+  <!-- 隐藏文件选择器 -->
+  <input type="file" id="file-input" accept="audio/*,.flac,.mp3" class="hidden" />
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
